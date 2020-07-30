@@ -27,8 +27,6 @@ int shm_fd_send_pid = -1;
 void *ptr_send_pid = NULL;
 void *ptr_receive_pid = NULL;
 char pid_client[10];
-
-int flag = 0;
 int pid = 0;
 int flagReceive = 0;
 int flagSend = 0;
@@ -52,38 +50,25 @@ void *threadSend(void *arg)
 			printf("\nsend to client:");
 			scanf("%s", name);
 			strcpy((char *)ptr_send, name);
-			flag = 1;
-			printf("pid of client: %d\n", pid);
 			kill(pid, SIGUSR2);
-			flagSend = 0;
 		}
 	}
 }
 
 void *threadReceive(void *arg)
 {
-
+	/* open the shared memory object */
+	shm_fd_receive = shm_open(KEY_NAME_RECEIVE, O_RDONLY, 0666);
+	/* memory map the shared memory object */
+	ptr_receive = mmap(0, size, PROT_READ, MAP_SHARED, shm_fd_receive, 0);
 	while (1)
 	{
-		if (flagReceive == 1)
+		if (flagReceive)
 		{
-			/* open the shared memory object */
-			shm_fd_receive = shm_open(KEY_NAME_RECEIVE, O_RDONLY, 0666);
-			/* memory map the shared memory object */
-			ptr_receive = mmap(0, size, PROT_READ, MAP_SHARED, shm_fd_receive, 0);
-
 			/* read from the shared memory object */
 			printf("\nserver: %s\n", (char *)ptr_receive);
-			if (strlen((char *)ptr_receive) > 1)
-			{
-				/* remove the shared memory object */
-				shm_unlink(KEY_NAME_RECEIVE);
-				munmap(ptr_receive, size);
-				ptr_receive = NULL;
-				shm_fd_receive = -1;
-				flagReceive = 0;
-			//	kill(pid, SIGUSR2);
-			}
+			flagReceive = 0;
+			printf("\nsend to client:");
 		}
 	}
 }
@@ -112,8 +97,6 @@ void main()
 		}
 		sleep(5);
 	}
-	// while (1)
-	// 	;
 	pthread_t thread1;
 	pthread_t thread2;
 	pthread_create(&thread1, NULL, threadSend, NULL);

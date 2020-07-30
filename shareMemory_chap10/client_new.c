@@ -34,7 +34,7 @@ void siguser_handel()
 {
   flagReceive = 1;
   flagSend = 1;
-  printf("\nclient:");
+  printf("\nReceive signal from server:");
 }
 void *threadSend(void *arg)
 {
@@ -49,48 +49,27 @@ void *threadSend(void *arg)
       printf("\nsend to server:");
       scanf("%s", name);
       sprintf((char *)ptr_send, name);
-      printf("\npid of server: %d", pid);
+      //  printf("\npid of server: %d", pid);
       kill(pid, SIGUSR1);
-      flagSend = 0;
     }
   }
 }
 void *threadReceive(void *arg)
 {
+  /* open the shared memory object */
+  shm_fd_receive = shm_open(KEY_NAME_RECEIVE, O_RDONLY, 0666);
+  /* memory map the shared memory object */
+  ptr_receive = mmap(0, size, PROT_READ, MAP_SHARED, shm_fd_receive, 0);
   while (1)
   {
     if (flagReceive == 1)
     {
-      /* open the shared memory object */
-      shm_fd_receive = shm_open(KEY_NAME_RECEIVE, O_RDONLY, 0666);
-      /* memory map the shared memory object */
-      ptr_receive = mmap(0, size, PROT_READ, MAP_SHARED, shm_fd_receive, 0);
-
       /* read from the shared memory object */
-      printf("%s\n", (char *)ptr_receive);
-      if (strlen((char *)ptr_receive) > 1)
-      {
-        /* remove the shared memory object */
-        shm_unlink(KEY_NAME_RECEIVE);
-        // munmap(ptr_receive, size);
-        ptr_receive = NULL;
-        shm_fd_receive = -1;
-        flagReceive = 0;
-       // kill(pid, SIGUSR1);
-      }
+      printf("\nclient:%s\n", (char *)ptr_receive);
+      flagReceive = 0;
+      printf("\nsend to server:");
     }
   }
-  // /* open the shared memory object */
-  // shm_fd_receive = shm_open(KEY_NAME_RECEIVE, O_RDONLY, 0666);
-
-  // /* memory map the shared memory object */
-  // ptr_receive = mmap(0, size, PROT_READ, MAP_SHARED, shm_fd_receive, 0);
-
-  // /* read from the shared memory object */
-  // printf("%s", (char *)ptr_receive);
-
-  // /* remove the shared memory object */
-  // shm_unlink(KEY_NAME_RECEIVE);
 }
 
 void main()
@@ -102,10 +81,8 @@ void main()
   sprintf(pid_server, "%d", getpid());
   printf("\npid of client: %s", pid_server);
   strcpy((char *)ptr_send_pid, pid_server);
-
   shm_fd_get_pid = shm_open(KEY_NAME_GET_ID, O_CREAT | O_RDWR, 0666);
   ftruncate(shm_fd_get_pid, size);
-
   while (1)
   {
 
@@ -120,7 +97,6 @@ void main()
     }
     sleep(5);
   }
-
   pthread_t thread1;
   pthread_t thread2;
   pthread_create(&thread1, NULL, threadSend, NULL);
